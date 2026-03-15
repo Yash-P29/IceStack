@@ -99,7 +99,7 @@ function App() {
         // 1. Try to save to cloud
         try {
           if (supabase) {
-            const { error } = await supabase
+            await supabase
               .from('leaderboard')
               .insert([{ name, score: currentScore }]);
           }
