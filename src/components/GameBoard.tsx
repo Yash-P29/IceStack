@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { type FC, useRef, useEffect, useState, useCallback } from 'react';
 import type { Grid, BlockShape } from '../game/types';
 import { canPlaceBlock, getFilledLines } from '../game/engine';
 import { THEMES } from '../game/shapes';
@@ -15,7 +15,7 @@ interface GameBoardProps {
   gridSize: number;
 }
 
-export const GameBoard: React.FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, onRestart, mousePos, theme, freezeMode, gridSize }) => {
+export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, onRestart, mousePos, theme, freezeMode, gridSize }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 

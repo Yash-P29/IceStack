@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameBoard } from './components/GameBoard';
 import { BlockTray } from './components/BlockTray';
 import { Controls } from './components/Controls';
@@ -60,21 +60,15 @@ function App() {
       const currentScore = gameState.score;
       const name = playerName.trim() || 'Anonymous';
       
-      // Check if this score can beat any entry on the leaderboard
       const lowestEntry = leaderboard[leaderboard.length - 1];
       if (currentScore > lowestEntry.score) {
-        // Fire confetti!
         launchConfetti(3000);
-
-        // Insert the new entry
         const newBoard = [...leaderboard, { rank: 0, name, score: currentScore }]
           .sort((a, b) => b.score - a.score)
-          .slice(0, 10) // Keep only top 10
+          .slice(0, 10)
           .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
-
         setLeaderboard(newBoard);
       }
-
       prevScoreRef.current = currentScore;
     }
   }, [gameState.isGameOver, gameState.score, playerName, leaderboard]);
@@ -86,6 +80,8 @@ function App() {
     }
   }, [gameState.isGameOver, gameState.score]);
 
+  // ========== UNIFIED POINTER HANDLING (mouse + touch) ==========
+
   // Global Mouse Move for Dragging
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -94,26 +90,38 @@ function App() {
       }
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      if (gameState.draggedBlock) {
+        e.preventDefault(); // Prevent scroll while dragging
+        const touch = e.touches[0];
+        setMousePos({ clientX: touch.clientX, clientY: touch.clientY });
+      }
+    };
+
     if (gameState.draggedBlock) {
        window.addEventListener('mousemove', handleMouseMove);
+       window.addEventListener('touchmove', handleTouchMove, { passive: false });
     } else {
        setMousePos(null);
     }
 
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+    };
   }, [gameState.draggedBlock]);
 
-  // Global Mouse Up for Dropping
-  const handleGlobalMouseUp = useCallback((e: MouseEvent) => {
+  // Shared drop logic
+  const attemptDrop = useCallback((clientX: number, clientY: number) => {
     if (!gameState.draggedBlock) return;
     
-    const elementsUnderCursor = document.elementsFromPoint(e.clientX, e.clientY);
+    const elementsUnderCursor = document.elementsFromPoint(clientX, clientY);
     const boardContainer = elementsUnderCursor.find(el => el.classList.contains('board-container'));
     
     if (boardContainer) {
        const rect = boardContainer.getBoundingClientRect();
-       const x = e.clientX - rect.left;
-       const y = e.clientY - rect.top;
+       const x = clientX - rect.left;
+       const y = clientY - rect.top;
 
        const CELL_SIZE = 40;
        const GAP = 2;
@@ -130,17 +138,37 @@ function App() {
     }
   }, [gameState]);
 
+  // Global Mouse Up for Dropping
+  const handleGlobalMouseUp = useCallback((e: MouseEvent) => {
+    attemptDrop(e.clientX, e.clientY);
+  }, [attemptDrop]);
+
+  // Global Touch End for Dropping
+  const handleGlobalTouchEnd = useCallback((e: TouchEvent) => {
+    if (!gameState.draggedBlock) return;
+    // Use the last known position since touchend has no touches
+    const touch = e.changedTouches[0];
+    if (touch) {
+      attemptDrop(touch.clientX, touch.clientY);
+    } else {
+      gameState.clearDraggedBlock();
+    }
+  }, [gameState, attemptDrop]);
+
   useEffect(() => {
     window.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
-  }, [handleGlobalMouseUp]);
+    window.addEventListener('touchend', handleGlobalTouchEnd);
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('touchend', handleGlobalTouchEnd);
+    };
+  }, [handleGlobalMouseUp, handleGlobalTouchEnd]);
 
-
-  const handleDragStart = (block: BlockShape, index: number, e: React.MouseEvent) => {
-    e.preventDefault();
+  // Unified drag start handler (works for both mouse and touch)
+  const handleDragStart = useCallback((block: BlockShape, index: number, clientX: number, clientY: number) => {
     gameState.setDraggedBlock(block, index);
-    setMousePos({ clientX: e.clientX, clientY: e.clientY });
-  };
+    setMousePos({ clientX, clientY });
+  }, [gameState]);
 
   return (
     <>
@@ -155,36 +183,16 @@ function App() {
       <div className="game-layout">
         <div className="main-column">
           {/* Grid Size Selector */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '4px' }}>
+          <div className="grid-size-selector">
             <button
               onClick={() => setGridSize(8)}
-              style={{
-                padding: '8px 20px',
-                borderRadius: '8px',
-                background: gridSize === 8 ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
-                color: gridSize === 8 ? '#000' : 'var(--text-secondary)',
-                border: gridSize === 8 ? '2px solid var(--accent-cyan)' : '2px solid var(--panel-border)',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
+              className={`grid-size-btn ${gridSize === 8 ? 'active' : ''}`}
             >
               8×8
             </button>
             <button
               onClick={() => setGridSize(10)}
-              style={{
-                padding: '8px 20px',
-                borderRadius: '8px',
-                background: gridSize === 10 ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
-                color: gridSize === 10 ? '#000' : 'var(--text-secondary)',
-                border: gridSize === 10 ? '2px solid var(--accent-cyan)' : '2px solid var(--panel-border)',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
+              className={`grid-size-btn ${gridSize === 10 ? 'active' : ''}`}
             >
               10×10
             </button>
@@ -210,7 +218,7 @@ function App() {
         <div className="side-column">
           <div className="glass-panel score-panel" style={{ padding: '12px 24px' }}>
             <span className="score-label">Score</span>
-            <span className="score-value" style={{ fontSize: '2.5rem' }}>{gameState.score.toLocaleString()}</span>
+            <span className="score-value">{gameState.score.toLocaleString()}</span>
           </div>
            <Controls 
              freezeMode={gameState.freezeMode}

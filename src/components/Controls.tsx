@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 
 interface ControlsProps {
   freezeMode: boolean;
@@ -6,7 +6,7 @@ interface ControlsProps {
   onUnfreeze: () => void;
 }
 
-export const Controls: React.FC<ControlsProps> = ({ freezeMode, onToggleFreeze, onUnfreeze }) => {
+export const Controls: FC<ControlsProps> = ({ freezeMode, onToggleFreeze, onUnfreeze }) => {
   return (
     <div className="glass-panel main-column">
       <div className="controls-panel">

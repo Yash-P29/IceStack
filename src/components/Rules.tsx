@@ -1,6 +1,6 @@
-import React from 'react';
+import { type FC } from 'react';
 
-export const Rules: React.FC = () => {
+export const Rules: FC = () => {
   return (
     <div className="glass-panel" style={{ width: '800px', maxWidth: '100%', textAlign: 'left', padding: '40px' }}>
       <h2 style={{ fontSize: '2.5rem', marginBottom: '24px', color: 'var(--accent-cyan)' }}>IceStack Rules</h2>

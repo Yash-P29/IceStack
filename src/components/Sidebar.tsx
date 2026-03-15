@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { type FC, useState } from 'react';
 import type { TabName } from '../App';
 
 interface SidebarProps {
@@ -6,7 +6,7 @@ interface SidebarProps {
   onSelectTab: (tab: TabName) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
+export const Sidebar: FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (

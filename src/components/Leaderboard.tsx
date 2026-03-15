@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 
 export interface LeaderboardEntry {
   rank: number;
@@ -12,7 +12,7 @@ interface LeaderboardProps {
   onPlayerNameChange: (name: string) => void;
 }
 
-export const Leaderboard: React.FC<LeaderboardProps> = ({ entries, playerName, onPlayerNameChange }) => {
+export const Leaderboard: FC<LeaderboardProps> = ({ entries, playerName, onPlayerNameChange }) => {
   const getRankStyle = (rank: number) => {
     switch(rank) {
       case 1: return { 

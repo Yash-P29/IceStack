@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 import { THEMES } from '../game/shapes';
 import type { ThemeName } from '../game/shapes';
 
@@ -7,7 +7,7 @@ interface ThemeSelectorProps {
   onSelectTheme: (theme: ThemeName) => void;
 }
 
-export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ currentTheme, onSelectTheme }) => {
+export const ThemeSelector: FC<ThemeSelectorProps> = ({ currentTheme, onSelectTheme }) => {
   const themesList: { id: ThemeName; label: string; desc: string }[] = [
     { id: 'default', label: 'Neon Default', desc: 'The classic vibrant IceStack experience.' },
     { id: 'green', label: 'Emerald Forest', desc: 'Lush and natural shades of green.' },
