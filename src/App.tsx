@@ -34,6 +34,11 @@ function App() {
   const fetchLeaderboard = useCallback(async () => {
     setIsLoadingLeaderboard(true);
     try {
+      if (!supabase) {
+        setIsLoadingLeaderboard(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('leaderboard')
         .select('*')
@@ -75,6 +80,8 @@ function App() {
         }
 
         try {
+          if (!supabase) return;
+
           const { error } = await supabase
             .from('leaderboard')
             .insert([{ name, score: currentScore }]);
