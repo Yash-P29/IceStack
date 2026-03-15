@@ -12,21 +12,10 @@ import { THEMES } from './game/shapes';
 import type { ThemeName } from './game/shapes';
 import type { BlockShape } from './game/types';
 import { launchConfetti } from './game/confetti';
+import { supabase } from './game/supabaseClient';
 
 export type TabName = 'play' | 'rules' | 'leaderboard' | 'themes';
 
-const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, name: 'Gaurav Patil', score: 26012006 },
-  { rank: 2, name: '—', score: 0 },
-  { rank: 3, name: '—', score: 0 },
-  { rank: 4, name: '—', score: 0 },
-  { rank: 5, name: '—', score: 0 },
-  { rank: 6, name: '—', score: 0 },
-  { rank: 7, name: '—', score: 0 },
-  { rank: 8, name: '—', score: 0 },
-  { rank: 9, name: '—', score: 0 },
-  { rank: 10, name: '—', score: 0 },
-];
 
 function App() {
   const [gridSize, setGridSize] = useState(10);
@@ -37,19 +26,36 @@ function App() {
   const [playerName, setPlayerName] = useState(() => {
     return localStorage.getItem('icestack_playerName') || '';
   });
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('icestack_leaderboard');
-      if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    return DEFAULT_LEADERBOARD;
-  });
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(true);
   const prevScoreRef = useRef(0);
 
-  // Persist leaderboard and playerName to localStorage
+  // Fetch global leaderboard from Supabase
+  const fetchLeaderboard = useCallback(async () => {
+    setIsLoadingLeaderboard(true);
+    try {
+      const { data, error } = await supabase
+        .from('leaderboard')
+        .select('*')
+        .order('score', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      if (data) {
+        setLeaderboard(data.map((entry, idx) => ({ ...entry, rank: idx + 1 })));
+      }
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err);
+    } finally {
+      setIsLoadingLeaderboard(false);
+    }
+  }, []);
+
   useEffect(() => {
-    localStorage.setItem('icestack_leaderboard', JSON.stringify(leaderboard));
-  }, [leaderboard]);
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
+  // Persist playerName to localStorage
   useEffect(() => {
     localStorage.setItem('icestack_playerName', playerName);
   }, [playerName]);
@@ -60,18 +66,32 @@ function App() {
       const currentScore = gameState.score;
       const name = playerName.trim() || 'Anonymous';
       
-      const lowestEntry = leaderboard[leaderboard.length - 1];
-      if (currentScore > lowestEntry.score) {
-        launchConfetti(3000);
-        const newBoard = [...leaderboard, { rank: 0, name, score: currentScore }]
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 10)
-          .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
-        setLeaderboard(newBoard);
-      }
+      const submitScore = async () => {
+        // Only trigger confetti if it's a top score
+        const isTopScore = leaderboard.length < 10 || currentScore > (leaderboard[leaderboard.length - 1]?.score || 0);
+        
+        if (isTopScore) {
+          launchConfetti(3000);
+        }
+
+        try {
+          const { error } = await supabase
+            .from('leaderboard')
+            .insert([{ name, score: currentScore }]);
+          
+          if (error) throw error;
+          
+          // Refresh the leaderboard to show the new entry from the cloud
+          await fetchLeaderboard();
+        } catch (err) {
+          console.error('Error submitting score:', err);
+        }
+      };
+
+      submitScore();
       prevScoreRef.current = currentScore;
     }
-  }, [gameState.isGameOver, gameState.score, playerName, leaderboard]);
+  }, [gameState.isGameOver, gameState.score, playerName, leaderboard, fetchLeaderboard]);
 
   // Reset prevScoreRef when a new game starts
   useEffect(() => {
@@ -235,6 +255,7 @@ function App() {
           entries={leaderboard} 
           playerName={playerName} 
           onPlayerNameChange={setPlayerName} 
+          isLoading={isLoadingLeaderboard}
         />
       )}
       {currentTab === 'themes' && <ThemeSelector currentTheme={currentTheme} onSelectTheme={setCurrentTheme} />}

@@ -10,9 +10,10 @@ interface LeaderboardProps {
   entries: LeaderboardEntry[];
   playerName: string;
   onPlayerNameChange: (name: string) => void;
+  isLoading?: boolean;
 }
 
-export const Leaderboard: FC<LeaderboardProps> = ({ entries, playerName, onPlayerNameChange }) => {
+export const Leaderboard: FC<LeaderboardProps> = ({ entries, playerName, onPlayerNameChange, isLoading }) => {
   const getRankStyle = (rank: number) => {
     switch(rank) {
       case 1: return { 
@@ -52,48 +53,73 @@ export const Leaderboard: FC<LeaderboardProps> = ({ entries, playerName, onPlaye
         Top 10 IceStack players worldwide
       </p>
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {entries.map((player, idx) => {
-          const rankStyle = getRankStyle(player.rank);
-          return (
-            <div 
-              key={idx}
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '14px 20px',
-                background: rankStyle.background,
-                borderBottom: idx !== entries.length - 1 ? '1px solid var(--panel-border)' : 'none',
-                borderRadius: player.rank <= 3 ? '10px' : '0',
-                transition: 'all 0.2s',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <span style={{ fontSize: '1.4rem', fontWeight: 800, width: '36px', color: rankStyle.color, textShadow: rankStyle.textShadow }}>
-                  {getMedal(player.rank) || `#${player.rank}`}
-                </span>
-                <span style={{ 
-                  fontSize: '1.15rem', 
-                  fontWeight: player.rank <= 3 ? 700 : 400, 
-                  color: player.rank <= 3 ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  letterSpacing: player.rank <= 3 ? '0.5px' : '0',
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', minHeight: '200px' }}>
+        {isLoading && (
+          <div style={{ 
+            position: 'absolute', 
+            top: 0, left: 0, right: 0, bottom: 0, 
+            display: 'flex', justifyContent: 'center', alignItems: 'center', 
+            background: 'rgba(15, 23, 42, 0.4)',
+            backdropFilter: 'blur(2px)',
+            borderRadius: '12px',
+            zIndex: 10
+          }}>
+             <div className="loading-spinner" style={{ 
+               width: '40px', height: '40px', border: '3px solid rgba(0, 229, 255, 0.2)', 
+               borderTopColor: 'var(--accent-cyan)', borderRadius: '50%',
+               animation: 'spin 1s linear infinite'
+             }} />
+          </div>
+        )}
+
+        {entries.length === 0 && !isLoading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+             No global records yet. Be the first! 🚀
+          </div>
+        ) : (
+          entries.map((player, idx) => {
+            const rankStyle = getRankStyle(player.rank);
+            return (
+              <div 
+                key={idx}
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '14px 20px',
+                  background: rankStyle.background,
+                  borderBottom: idx !== entries.length - 1 ? '1px solid var(--panel-border)' : 'none',
+                  borderRadius: player.rank <= 3 ? '10px' : '0',
+                  transition: 'all 0.2s',
+                  opacity: isLoading ? 0.3 : 1
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <span style={{ fontSize: '1.4rem', fontWeight: 800, width: '36px', color: rankStyle.color, textShadow: rankStyle.textShadow }}>
+                    {getMedal(player.rank) || `#${player.rank}`}
+                  </span>
+                  <span style={{ 
+                    fontSize: '1.15rem', 
+                    fontWeight: player.rank <= 3 ? 700 : 400, 
+                    color: player.rank <= 3 ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    letterSpacing: player.rank <= 3 ? '0.5px' : '0',
+                  }}>
+                    {player.name}
+                  </span>
+                </div>
+                <div style={{ 
+                  fontSize: '1.3rem', 
+                  fontWeight: 800, 
+                  color: rankStyle.color, 
+                  textShadow: rankStyle.textShadow,
+                  fontVariantNumeric: 'tabular-nums',
                 }}>
-                  {player.name}
-                </span>
+                  {player.score.toLocaleString()}
+                </div>
               </div>
-              <div style={{ 
-                fontSize: '1.3rem', 
-                fontWeight: 800, 
-                color: rankStyle.color, 
-                textShadow: rankStyle.textShadow,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {player.score.toLocaleString()}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Username Input Section */}
