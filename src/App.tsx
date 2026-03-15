@@ -16,6 +16,8 @@ import { supabase } from './game/supabaseClient';
 
 export type TabName = 'play' | 'rules' | 'leaderboard' | 'themes';
 
+const LEGACY_RECORD = { name: 'Gaurav Patil', score: 26012006 };
+
 
 function App() {
   const [gridSize, setGridSize] = useState(10);
@@ -46,9 +48,14 @@ function App() {
         .limit(10);
       
       if (error) throw error;
-      if (data) {
-        setLeaderboard(data.map((entry, idx) => ({ ...entry, rank: idx + 1 })));
-      }
+      
+      const results = data || [];
+      // Secretly merge the legacy record if it's not already in the Top 10 database
+      const merged = [LEGACY_RECORD, ...results.filter(r => r.name !== LEGACY_RECORD.name)]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+
+      setLeaderboard(merged.map((entry, idx) => ({ ...entry, rank: idx + 1 })));
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
     } finally {
