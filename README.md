@@ -147,19 +147,6 @@ http://localhost:5173
 
 ---
 
-# 📸 Screenshots
-
-Add screenshots of the game here after deployment.
-
-Example:
-
-```
-/screenshots/gameplay.png
-/screenshots/freeze-mode.png
-```
-
----
-
 # 🎯 Project Goals
 
 This project was built to demonstrate:
