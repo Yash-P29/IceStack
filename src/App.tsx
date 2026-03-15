@@ -35,32 +35,42 @@ function App() {
   // Fetch global leaderboard from Supabase
   const fetchLeaderboard = useCallback(async () => {
     setIsLoadingLeaderboard(true);
+    let cloudResults: any[] = [];
+    
     try {
-      if (!supabase) {
-        setIsLoadingLeaderboard(false);
-        return;
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('leaderboard')
+          .select('*')
+          .order('score', { ascending: false })
+          .limit(10);
+        
+        if (error) throw error;
+        cloudResults = data || [];
       }
-
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .order('score', { ascending: false })
-        .limit(10);
-      
-      if (error) throw error;
-      
-      const results = data || [];
-      // Secretly merge the legacy record if it's not already in the Top 10 database
-      const merged = [LEGACY_RECORD, ...results.filter(r => r.name !== LEGACY_RECORD.name)]
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
-
-      setLeaderboard(merged.map((entry, idx) => ({ ...entry, rank: idx + 1 })));
     } catch (err) {
-      console.error('Error fetching leaderboard:', err);
-    } finally {
-      setIsLoadingLeaderboard(false);
+      console.error('Error fetching global leaderboard:', err);
     }
+
+    // Load local fallback from localStorage
+    let localResults: any[] = [];
+    try {
+      const saved = localStorage.getItem('icestack_local_leaderboard');
+      if (saved) localResults = JSON.parse(saved);
+    } catch { /* ignore */ }
+
+    // Merge: Secret Record + Cloud + Local
+    // Sort and take top 10
+    const merged = [LEGACY_RECORD, ...cloudResults, ...localResults]
+      // filter out duplicates by name+score to be safe
+      .filter((entry, index, self) => 
+        index === self.findIndex((t) => t.name === entry.name && t.score === entry.score)
+      )
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    setLeaderboard(merged.map((entry, idx) => ({ ...entry, rank: idx + 1 })));
+    setIsLoadingLeaderboard(false);
   }, []);
 
   useEffect(() => {
@@ -79,27 +89,36 @@ function App() {
       const name = playerName.trim() || 'Anonymous';
       
       const submitScore = async () => {
-        // Only trigger confetti if it's a top score
+        // Decide if it's a top score
         const isTopScore = leaderboard.length < 10 || currentScore > (leaderboard[leaderboard.length - 1]?.score || 0);
         
         if (isTopScore) {
           launchConfetti(3000);
         }
 
+        // 1. Try to save to cloud
         try {
-          if (!supabase) return;
-
-          const { error } = await supabase
-            .from('leaderboard')
-            .insert([{ name, score: currentScore }]);
-          
-          if (error) throw error;
-          
-          // Refresh the leaderboard to show the new entry from the cloud
-          await fetchLeaderboard();
+          if (supabase) {
+            const { error } = await supabase
+              .from('leaderboard')
+              .insert([{ name, score: currentScore }]);
+          }
         } catch (err) {
-          console.error('Error submitting score:', err);
+          console.error('Error submitting to cloud:', err);
         }
+
+        // 2. Always save locally as fallback/backup
+        try {
+          const saved = localStorage.getItem('icestack_local_leaderboard');
+          const localBoard = saved ? JSON.parse(saved) : [];
+          const newLocal = [...localBoard, { name, score: currentScore }]
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10);
+          localStorage.setItem('icestack_local_leaderboard', JSON.stringify(newLocal));
+        } catch { /* ignore */ }
+        
+        // 3. Refresh display
+        await fetchLeaderboard();
       };
 
       submitScore();

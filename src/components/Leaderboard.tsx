@@ -50,7 +50,7 @@ export const Leaderboard: FC<LeaderboardProps> = ({ entries, playerName, onPlaye
         🏆 Global Leaderboard
       </h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem' }}>
-        Top 10 IceStack players worldwide
+        Top 10 IceStack players worldwide {!isLoading && !entries.some(e => e.name !== 'Gaurav Patil' && e.name !== '—') && "(Local Mode)"}
       </p>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', minHeight: '200px' }}>
