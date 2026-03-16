@@ -333,6 +333,7 @@ function App() {
                 gridSize={gridSize}
                 cellSize={cellSize}
                 canvasSize={canvasSize}
+                clearing={gameState.clearing}
               />
               <div id="block-tray-container">
                 <BlockTray

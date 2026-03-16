@@ -15,14 +15,29 @@ interface GameBoardProps {
   gridSize: number;
   cellSize: number;
   canvasSize: number;
+  clearing: boolean;
 }
 
-export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, onRestart, mousePos, theme, freezeMode, gridSize, cellSize, canvasSize }) => {
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+  size: number;
+  type: 'shard' | 'pulse' | 'ghost';
+  angle?: number;
+}
+
+export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, onRestart, mousePos, theme, freezeMode, gridSize, cellSize, canvasSize, clearing }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [hoverRow, setHoverRow] = useState<number | null>(null);
   const [hoverCol, setHoverCol] = useState<number | null>(null);
+  const [, forceUpdate] = useState({});
   const GAP = 2;
 
   const calculateGridPosition = useCallback((clientX: number, clientY: number) => {
@@ -38,6 +53,82 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
 
     return { row, col };
   }, [draggedBlock, cellSize, GAP]);
+
+  // Particle System State
+  const particlesRef = useRef<Particle[]>([]);
+  const requestRef = useRef<number>(null);
+
+  const createParticles = useCallback((row: number, col: number, type: 'shard' | 'pulse' | 'ghost', color: string) => {
+    const startX = GAP + col * (cellSize + GAP) + cellSize / 2;
+    const startY = GAP + row * (cellSize + GAP) + cellSize / 2;
+
+    if (type === 'shard') {
+      for (let i = 0; i < 8; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 4;
+        particlesRef.current.push({
+          x: startX,
+          y: startY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          maxLife: 0.5 + Math.random() * 0.5,
+          color,
+          size: 2 + Math.random() * 4,
+          type: 'shard'
+        });
+      }
+    } else if (type === 'pulse') {
+      particlesRef.current.push({
+        x: startX,
+        y: startY,
+        vx: 0,
+        vy: 0,
+        life: 1,
+        maxLife: 1,
+        color,
+        size: cellSize * 0.5,
+        type: 'pulse'
+      });
+    } else if (type === 'ghost') {
+      particlesRef.current.push({
+        x: startX,
+        y: startY,
+        vx: 0,
+        vy: -1.5,
+        life: 1,
+        maxLife: 1.2,
+        color,
+        size: cellSize,
+        type: 'ghost'
+      });
+    }
+  }, [cellSize, GAP]);
+
+  // Handle line clears and trigger particles
+  useEffect(() => {
+    if (clearing) {
+      const { filledRows, filledCols } = getFilledLines(grid, gridSize);
+      const types: ('shard' | 'pulse' | 'ghost')[] = ['shard', 'pulse', 'ghost'];
+      const selectedType = types[Math.floor(Math.random() * types.length)];
+
+      filledRows.forEach(r => {
+        for (let c = 0; c < gridSize; c++) {
+          const cell = grid[r][c];
+          const color = cell.frozen ? '#00FFFF' : (cell.colorIndex !== undefined ? THEMES[theme][cell.colorIndex] : '#fff');
+          createParticles(r, c, selectedType, color);
+        }
+      });
+      filledCols.forEach(c => {
+        for (let r = 0; r < gridSize; r++) {
+          if (filledRows.has(r)) continue; // Don't repeat for intersections
+          const cell = grid[r][c];
+          const color = cell.frozen ? '#00FFFF' : (cell.colorIndex !== undefined ? THEMES[theme][cell.colorIndex] : '#fff');
+          createParticles(r, c, selectedType, color);
+        }
+      });
+    }
+  }, [clearing, grid, gridSize, theme, createParticles]);
 
   // Update hover state when dragging
   useEffect(() => {
@@ -116,7 +207,7 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
     }
 
     // Draw line-clear highlight when NOT in freeze mode
-    if (!freezeMode) {
+    if (!freezeMode && clearing) {
       const { filledRows, filledCols } = getFilledLines(grid, gridSize);
       if (filledRows.size > 0 || filledCols.size > 0) {
         for (let r = 0; r < gridSize; r++) {
@@ -124,13 +215,10 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
             if (filledRows.has(r) || filledCols.has(c)) {
               const x = GAP + c * (cellSize + GAP);
               const y = GAP + r * (cellSize + GAP);
-              // Bright glowing overlay
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+              // Bright glowing overlay during clearing
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
               drawRoundedRect(x, y, cellSize, cellSize, 6);
               ctx.fill();
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-              ctx.lineWidth = 2;
-              ctx.stroke();
             }
           }
         }
@@ -141,15 +229,12 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
     if (draggedBlock && hoverRow !== null && hoverCol !== null) {
       const isValid = canPlaceBlock(grid, draggedBlock.block, hoverRow, hoverCol, gridSize);
       const shape = draggedBlock.block.grid;
-
       const blockRows = shape.length;
       const blockCols = shape[0].length;
 
-      // If valid and NOT freeze mode, simulate placing the block and check which lines would clear
       let previewFilledRows = new Set<number>();
       let previewFilledCols = new Set<number>();
       if (isValid && !freezeMode) {
-        // Create a temporary grid copy with the block "placed"
         const tempGrid = grid.map(row => [...row]);
         for (let r = 0; r < blockRows; r++) {
           for (let c = 0; c < blockCols; c++) {
@@ -158,12 +243,10 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
             }
           }
         }
-        // Check which rows/cols would be completed
         const result = getFilledLines(tempGrid, gridSize);
         previewFilledRows = result.filledRows;
         previewFilledCols = result.filledCols;
 
-        // Draw the line-clear preview highlight on ALL cells in those rows/cols
         if (previewFilledRows.size > 0 || previewFilledCols.size > 0) {
           for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
@@ -182,26 +265,19 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
         }
       }
 
-      // Draw the block shape preview cells
       for (let r = 0; r < blockRows; r++) {
         for (let c = 0; c < blockCols; c++) {
           if (shape[r][c]) {
             const gridR = hoverRow + r;
             const gridC = hoverCol + c;
-
             const x = GAP + gridC * (cellSize + GAP);
             const y = GAP + gridR * (cellSize + GAP);
 
-            // Only draw if within bounds
             if (gridR >= 0 && gridR < gridSize && gridC >= 0 && gridC < gridSize) {
               const drawColor = THEMES[theme][draggedBlock.block.colorIndex];
-              ctx.fillStyle = isValid
-                ? `${drawColor}88`
-                : 'rgba(255, 0, 0, 0.5)';
+              ctx.fillStyle = isValid ? `${drawColor}88` : 'rgba(255, 0, 0, 0.5)';
               drawRoundedRect(x, y, cellSize, cellSize, 6);
               ctx.fill();
-
-              // Stroke
               ctx.strokeStyle = isValid ? drawColor : '#ff0000';
               ctx.lineWidth = 2;
               ctx.stroke();
@@ -211,7 +287,50 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
       }
     }
 
-  }, [grid, draggedBlock, hoverRow, hoverCol, cellSize, GAP, canvasSize, theme, freezeMode, gridSize]);
+    // Particle Rendering (runs on every render)
+    if (particlesRef.current.length > 0) {
+       particlesRef.current = particlesRef.current.filter(p => p.life > 0);
+       particlesRef.current.forEach(p => {
+         p.x += p.vx;
+         p.y += p.vy;
+         p.life -= 0.02;
+
+         const opacity = Math.max(0, p.life / p.maxLife);
+         ctx.save();
+         ctx.globalAlpha = opacity;
+
+         if (p.type === 'shard') {
+           ctx.fillStyle = p.color;
+           ctx.beginPath();
+           ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+           ctx.fill();
+         } else if (p.type === 'pulse') {
+           ctx.strokeStyle = p.color;
+           ctx.lineWidth = 3;
+           ctx.beginPath();
+           ctx.arc(p.x, p.y, p.size * (2 - p.life), 0, Math.PI * 2);
+           ctx.stroke();
+         } else if (p.type === 'ghost') {
+           ctx.fillStyle = p.color;
+           drawRoundedRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size, 6);
+           ctx.fill();
+         }
+         ctx.restore();
+       });
+    }
+
+    // Use requestAnimationFrame to drive particle physics when particles exist
+    if (particlesRef.current.length > 0) {
+      requestRef.current = requestAnimationFrame(() => {
+         forceUpdate({});
+      });
+    }
+
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+
+  }, [grid, draggedBlock, hoverRow, hoverCol, cellSize, GAP, canvasSize, theme, freezeMode, gridSize, clearing, createParticles]);
 
   return (
     <div className="board-container glass-panel" ref={containerRef}>
