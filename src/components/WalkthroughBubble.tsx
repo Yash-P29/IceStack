@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface WalkthroughStep {
   selector: string | null;
@@ -30,19 +30,43 @@ interface WalkthroughProps {
 
 export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onNext, onSkip, playerName }) => {
   const step = STEPS[currentStep];
-  const [bubbleStyle, setBubbleStyle] = useState<React.CSSProperties>({ display: 'none' });
-  const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({ display: 'none' });
+
+  const overlayTopRef = useRef<HTMLDivElement>(null);
+  const overlayBottomRef = useRef<HTMLDivElement>(null);
+  const overlayLeftRef = useRef<HTMLDivElement>(null);
+  const overlayRightRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!step.selector) {
-      setBubbleStyle({
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 10001,
+    const hideOverlays = () => {
+      [overlayTopRef, overlayBottomRef, overlayLeftRef, overlayRightRef].forEach(ref => {
+        if (ref.current) ref.current.style.display = 'none';
       });
-      setHighlightStyle({ display: 'none' });
+    };
+
+    if (!step.selector) {
+      if (bubbleRef.current) {
+        Object.assign(bubbleRef.current.style, {
+          display: 'block',
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: '10001',
+        });
+      }
+      hideOverlays();
+      if (overlayTopRef.current) {
+        Object.assign(overlayTopRef.current.style, {
+          display: 'block',
+          position: 'fixed',
+          inset: '0',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          zIndex: '10000',
+          pointerEvents: 'auto',
+        });
+      }
       return;
     }
 
@@ -52,31 +76,60 @@ export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onN
       const bubbleWidth = Math.min(window.innerWidth - 40, 300);
 
       if (!el) {
-        setBubbleStyle({
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: `${bubbleWidth}px`,
-          zIndex: 10001,
-        });
+        if (bubbleRef.current) {
+          Object.assign(bubbleRef.current.style, {
+            display: 'block',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: `${bubbleWidth}px`,
+            zIndex: '10001',
+          });
+        }
+        hideOverlays();
+        if (overlayTopRef.current) {
+          Object.assign(overlayTopRef.current.style, {
+            display: 'block',
+            position: 'fixed',
+            inset: '0',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            zIndex: '10000',
+            pointerEvents: 'auto',
+          });
+        }
         return;
       }
 
       const rect = el.getBoundingClientRect();
-      const padding = 12;
+      const p = 12; // padding
 
-      setHighlightStyle({
+      // Using 4 divs for a nearly-zero cost spotlight effect
+      const x1 = rect.left - p;
+      const y1 = rect.top - p;
+      const x2 = rect.right + p;
+      const y2 = rect.bottom + p;
+
+      // 4-div approach: The gold standard for performant spotlights
+      const common = {
+        display: 'block',
         position: 'fixed',
-        top: rect.top - padding,
-        left: rect.left - padding,
-        width: rect.width + padding * 2,
-        height: rect.height + padding * 2,
-        borderRadius: '12px',
-        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7), inset 0 0 0 2px var(--accent-cyan)',
-        zIndex: 10000,
-        pointerEvents: 'none',
-        transition: 'all 0.3s ease',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        zIndex: '10000',
+        pointerEvents: 'auto',
+      };
+
+      if (overlayTopRef.current) Object.assign(overlayTopRef.current.style, common, {
+        top: 0, left: 0, right: 0, height: `${y1}px`
+      });
+      if (overlayBottomRef.current) Object.assign(overlayBottomRef.current.style, common, {
+        top: `${y2}px`, left: 0, right: 0, bottom: 0
+      });
+      if (overlayLeftRef.current) Object.assign(overlayLeftRef.current.style, common, {
+        top: `${y1}px`, left: 0, width: `${x1}px`, height: `${y2 - y1}px`
+      });
+      if (overlayRightRef.current) Object.assign(overlayRightRef.current.style, common, {
+        top: `${y1}px`, left: `${x2}px`, right: 0, height: `${y2 - y1}px`
       });
 
       let top = rect.top;
@@ -101,22 +154,22 @@ export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onN
           break;
         case 'left':
           if (isMobile) {
-             top = rect.top - 20;
-             transform = 'translate(-50%, -100%)';
+            top = rect.top - 20;
+            transform = 'translate(-50%, -100%)';
           } else {
-             top = rect.top + rect.height / 2;
-             left = rect.left - 20;
-             transform = 'translate(-100%, -50%)';
+            top = rect.top + rect.height / 2;
+            left = rect.left - 20;
+            transform = 'translate(-100%, -50%)';
           }
           break;
         case 'right':
           if (isMobile) {
-             top = rect.bottom + 20;
-             transform = 'translate(-50%, 0)';
+            top = rect.bottom + 20;
+            transform = 'translate(-50%, 0)';
           } else {
-             top = rect.top + rect.height / 2;
-             left = rect.right + 20;
-             transform = 'translate(0, -50%)';
+            top = rect.top + rect.height / 2;
+            left = rect.right + 20;
+            transform = 'translate(0, -50%)';
           }
           break;
         default:
@@ -134,19 +187,22 @@ export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onN
       if (top < 10) top = 10;
       if (top > window.innerHeight - 100) top = window.innerHeight - 200; // Leave room for buttons
 
-      setBubbleStyle({
-        position: 'fixed',
-        top,
-        left,
-        width: `${bubbleWidth}px`,
-        transform,
-        zIndex: 10001,
-      });
+      if (bubbleRef.current) {
+        Object.assign(bubbleRef.current.style, {
+          display: 'block',
+          position: 'fixed',
+          top: `${top}px`,
+          left: `${left}px`,
+          width: `${bubbleWidth}px`,
+          transform,
+          zIndex: '10001',
+        });
+      }
     };
 
     // Initial update with a small delay to allow tab transitions to complete
     const timeoutId = setTimeout(updatePosition, 100);
-    
+
     // Also use requestAnimationFrame to catch any layout shifts
     updatePosition();
     const rafId = requestAnimationFrame(updatePosition);
@@ -160,24 +216,37 @@ export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onN
   }, [currentStep, step]);
 
   return (
-    <>
-      <div style={highlightStyle} />
+    <div ref={containerRef} style={{ position: 'fixed', inset: 0, zIndex: 10000, pointerEvents: 'none' }}>
+      <div ref={overlayTopRef} style={{ display: 'none' }} />
+      <div ref={overlayBottomRef} style={{ display: 'none' }} />
+      <div ref={overlayLeftRef} style={{ display: 'none' }} />
+      <div ref={overlayRightRef} style={{ display: 'none' }} />
+
       {step.selector === null && (
         <div style={{
           position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.7)',
           zIndex: 9999,
+          pointerEvents: 'auto',
         }} />
       )}
-      <div className="glass-panel" style={{
-        ...bubbleStyle,
-        padding: '20px',
-        textAlign: 'center',
-        border: '2px solid var(--accent-cyan)',
-        animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-        boxShadow: '0 8px 32px rgba(0, 229, 255, 0.2)',
-      }}>
+
+      <div
+        ref={bubbleRef}
+        className="glass-panel"
+        style={{
+          display: 'none',
+          padding: '20px',
+          textAlign: 'center',
+          border: '2px solid var(--accent-cyan)',
+          background: '#1e293b',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+          pointerEvents: 'auto',
+        }}
+      >
         <p style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '20px', color: '#fff' }}>
           {step.message}
         </p>
@@ -210,12 +279,6 @@ export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onN
         </div>
       </div>
 
-      <style>{`
-        @keyframes popIn {
-          from { opacity: 0; scale: 0.8; }
-          to { opacity: 1; scale: 1; }
-        }
-      `}</style>
-    </>
+    </div>
   );
 };

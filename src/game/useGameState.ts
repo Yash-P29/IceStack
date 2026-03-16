@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
     createEmptyGrid, 
     checkGameOver, 
@@ -28,14 +28,10 @@ export const useGameState = (gridSize: number = GRID_SIZE) => {
     draggedBlock: null
   });
 
-  // Track whether we're in the "highlight" phase (block placed, lines about to clear)
-  const [clearing, setClearing] = useState(false);
-  const clearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // No longer using clearing delays for performance reasons
 
   // Synchronously detect grid size mismatch and reset immediately
   if (gameState.grid.length !== gridSize) {
-    if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
-    setClearing(false);
     setGameState({
       grid: createEmptyGrid(gridSize),
       availableBlocks: getRandomBlocks(3),
@@ -49,13 +45,13 @@ export const useGameState = (gridSize: number = GRID_SIZE) => {
 
   // Evaluate game over on grid or block change (but not during clearing animation)
   useEffect(() => {
-    if (!gameState.isGameOver && !clearing) {
+    if (!gameState.isGameOver) {
       const isOver = checkGameOver(gameState.grid, gameState.availableBlocks, gridSize);
       if (isOver) {
         setGameState(prev => ({ ...prev, isGameOver: true }));
       }
     }
-  }, [gameState.grid, gameState.availableBlocks, gameState.isGameOver, gridSize, clearing]);
+  }, [gameState.grid, gameState.availableBlocks, gameState.isGameOver, gridSize]);
 
   const toggleFreezeMode = useCallback(() => {
     setGameState(prev => ({
@@ -91,70 +87,43 @@ export const useGameState = (gridSize: number = GRID_SIZE) => {
   }, []);
 
   const handleDrop = useCallback((row: number, col: number) => {
-    if (!gameState.draggedBlock || gameState.isGameOver || clearing) return false;
+    if (!gameState.draggedBlock || gameState.isGameOver) return false;
 
     const { block, index } = gameState.draggedBlock;
     const { success, newGrid } = placeBlock(gameState.grid, block, row, col, gridSize);
 
     if (success) {
       const shapePoints = calculateBlockPoints(block);
-
-      // Phase 1: Place the block on the grid WITHOUT clearing lines yet
-      // This lets GameBoard render the highlight on the filled lines
+      
+      // Calculate new blocks state
       let newBlocks: (BlockShape | null)[] = [...gameState.availableBlocks];
       newBlocks[index] = null;
       if (newBlocks.every(b => b === null)) {
         newBlocks = getRandomBlocks(3);
       }
 
-      setGameState(prev => ({
-        ...prev,
-        grid: newGrid, // Block placed but lines NOT yet cleared
-        availableBlocks: newBlocks,
-        score: prev.score + shapePoints,
-        draggedBlock: null
-      }));
+      // Instant evaluation and clearing
+      setGameState(prev => {
+        const { updatedGrid, points } = evaluateGrid(newGrid, prev.freezeMode, gridSize);
+        return {
+          ...prev,
+          grid: updatedGrid,
+          availableBlocks: newBlocks,
+          score: prev.score + shapePoints + points,
+          draggedBlock: null
+        };
+      });
       
-      vibrate(10); // Subtle tap on placement
-
-      // Phase 2: After a visual delay, evaluate and clear/freeze lines
-      if (!gameState.freezeMode) {
-        setClearing(true);
-        clearTimeoutRef.current = setTimeout(() => {
-          setGameState(prev => {
-            const { updatedGrid, points } = evaluateGrid(prev.grid, prev.freezeMode, gridSize);
-            return {
-              ...prev,
-              grid: updatedGrid,
-              score: prev.score + points,
-            };
-          });
-          if (clearing) vibrate([20, 50, 20]); // Burst on clear
-          setClearing(false);
-        }, 400); // 400ms highlight flash
-      } else {
-        // In freeze mode, evaluate immediately (frozen lines stay visible anyway)
-        setGameState(prev => {
-          const { updatedGrid, points } = evaluateGrid(prev.grid, prev.freezeMode, gridSize);
-          return {
-            ...prev,
-            grid: updatedGrid,
-            score: prev.score + points,
-          };
-        });
-      }
-
+      vibrate(10); 
       return true;
     }
 
     setGameState(prev => ({ ...prev, draggedBlock: null }));
     return false;
 
-  }, [gameState, gridSize, clearing]);
+  }, [gameState, gridSize]);
 
   const resetGame = useCallback(() => {
-    if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
-    setClearing(false);
     setGameState({
         grid: createEmptyGrid(gridSize),
         availableBlocks: getRandomBlocks(3),
@@ -166,17 +135,14 @@ export const useGameState = (gridSize: number = GRID_SIZE) => {
     });
   }, [gridSize]);
 
-  // Cleanup timeout on unmount
+  // Game state hook lifecycle
   useEffect(() => {
-    return () => {
-      if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
-    };
+    // Component lifecycle logic if needed
   }, []);
 
   return {
     ...gameState,
     gridSize,
-    clearing,
     toggleFreezeMode,
     unfreeze,
     setDraggedBlock,
