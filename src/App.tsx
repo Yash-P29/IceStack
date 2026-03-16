@@ -17,7 +17,7 @@ import { supabase } from './game/supabaseClient';
 
 export type TabName = 'play' | 'rules' | 'leaderboard' | 'themes' | 'walkthrough';
 
-const LEGACY_RECORD = { name: 'Gaurav Patil', score: 26012006 };
+const LEGACY_RECORD = { name: 'Gaurav Patil', score: 26012001 };
 
 
 function App() {
