@@ -22,9 +22,32 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
   const [hoverRow, setHoverRow] = useState<number | null>(null);
   const [hoverCol, setHoverCol] = useState<number | null>(null);
 
-  const CELL_SIZE = 40;
+  const [cellSize, setCellSize] = useState(40);
   const GAP = 2; // Inner gap between cells rendering
-  const CANVAS_SIZE = (CELL_SIZE + GAP) * gridSize + GAP;
+  const [canvasSize, setCanvasSize] = useState((40 + GAP) * gridSize + GAP);
+
+  // Dynamic scaling for mobile
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateSize = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      
+      const availableWidth = window.innerWidth - 32; // Horizontal padding
+      const maxPossibleSize = Math.min(availableWidth, 500); // Max size on desktop
+      
+      const newCellSize = Math.floor((maxPossibleSize - (gridSize + 1) * GAP) / gridSize);
+      setCellSize(newCellSize);
+      setCanvasSize((newCellSize + GAP) * gridSize + GAP);
+    };
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(document.body);
+    updateSize();
+
+    return () => observer.disconnect();
+  }, [gridSize]);
 
   const calculateGridPosition = useCallback((clientX: number, clientY: number) => {
     if (!containerRef.current || !draggedBlock) return null;
@@ -40,11 +63,11 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
     const y = clientY - rect.top;
     const blockRows = draggedBlock.block.grid.length;
     const blockCols = draggedBlock.block.grid[0].length;
-    const col = Math.floor((x - ((blockCols * CELL_SIZE) / 2)) / (CELL_SIZE + GAP));
-    const row = Math.floor((y - ((blockRows * CELL_SIZE) / 2)) / (CELL_SIZE + GAP));
+    const col = Math.floor((x - ((blockCols * cellSize) / 2)) / (cellSize + GAP));
+    const row = Math.floor((y - ((blockRows * cellSize) / 2)) / (cellSize + GAP));
 
     return { row, col };
-  }, [draggedBlock, CELL_SIZE, GAP]);
+  }, [draggedBlock, cellSize, GAP]);
 
 
   // Update hover state when dragging
@@ -73,7 +96,7 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
     if (!ctx) return;
 
     // Clear board
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
 
     const drawRoundedRect = (x: number, y: number, w: number, h: number, r: number) => {
       ctx.beginPath();
@@ -88,14 +111,14 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
     // Draw Grid Base
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
-        const x = GAP + c * (CELL_SIZE + GAP);
-        const y = GAP + r * (CELL_SIZE + GAP);
+        const x = GAP + c * (cellSize + GAP);
+        const y = GAP + r * (cellSize + GAP);
 
         const cell = grid[r][c];
 
         if (cell.filled) {
           ctx.fillStyle = cell.frozen ? '#00FFFF' : (cell.colorIndex !== undefined ? THEMES[theme][cell.colorIndex] : '#fff');
-          drawRoundedRect(x, y, CELL_SIZE, CELL_SIZE, 6);
+          drawRoundedRect(x, y, cellSize, cellSize, 6);
           ctx.fill();
 
           // Inner shadow / styling
@@ -114,7 +137,7 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
         } else {
           // Empty cell
           ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
-          drawRoundedRect(x, y, CELL_SIZE, CELL_SIZE, 6);
+          drawRoundedRect(x, y, cellSize, cellSize, 6);
           ctx.fill();
           ctx.strokeStyle = 'rgba(51, 65, 85, 0.5)';
           ctx.lineWidth = 1;
@@ -130,11 +153,11 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
         for (let r = 0; r < gridSize; r++) {
           for (let c = 0; c < gridSize; c++) {
             if (filledRows.has(r) || filledCols.has(c)) {
-              const x = GAP + c * (CELL_SIZE + GAP);
-              const y = GAP + r * (CELL_SIZE + GAP);
+              const x = GAP + c * (cellSize + GAP);
+              const y = GAP + r * (cellSize + GAP);
               // Bright glowing overlay
               ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-              drawRoundedRect(x, y, CELL_SIZE, CELL_SIZE, 6);
+              drawRoundedRect(x, y, cellSize, cellSize, 6);
               ctx.fill();
               ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
               ctx.lineWidth = 2;
@@ -176,10 +199,10 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
           for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
               if (previewFilledRows.has(r) || previewFilledCols.has(c)) {
-                const hx = GAP + c * (CELL_SIZE + GAP);
-                const hy = GAP + r * (CELL_SIZE + GAP);
+                const hx = GAP + c * (cellSize + GAP);
+                const hy = GAP + r * (cellSize + GAP);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                drawRoundedRect(hx, hy, CELL_SIZE, CELL_SIZE, 6);
+                drawRoundedRect(hx, hy, cellSize, cellSize, 6);
                 ctx.fill();
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.lineWidth = 2;
@@ -197,8 +220,8 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
             const gridR = hoverRow + r;
             const gridC = hoverCol + c;
 
-            const x = GAP + gridC * (CELL_SIZE + GAP);
-            const y = GAP + gridR * (CELL_SIZE + GAP);
+            const x = GAP + gridC * (cellSize + GAP);
+            const y = GAP + gridR * (cellSize + GAP);
 
             // Only draw if within bounds
             if (gridR >= 0 && gridR < gridSize && gridC >= 0 && gridC < gridSize) {
@@ -206,7 +229,7 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
               ctx.fillStyle = isValid
                 ? `${drawColor}88`
                 : 'rgba(255, 0, 0, 0.5)';
-              drawRoundedRect(x, y, CELL_SIZE, CELL_SIZE, 6);
+              drawRoundedRect(x, y, cellSize, cellSize, 6);
               ctx.fill();
 
               // Stroke
@@ -219,14 +242,14 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
       }
     }
 
-  }, [grid, draggedBlock, hoverRow, hoverCol, CELL_SIZE, GAP, CANVAS_SIZE, theme, freezeMode, gridSize]);
+  }, [grid, draggedBlock, hoverRow, hoverCol, cellSize, GAP, canvasSize, theme, freezeMode, gridSize]);
 
   return (
     <div className="board-container glass-panel" ref={containerRef}>
       <canvas
         ref={canvasRef}
-        width={CANVAS_SIZE}
-        height={CANVAS_SIZE}
+        width={canvasSize}
+        height={canvasSize}
         style={{ display: 'block', pointerEvents: 'none' }} // Let container catch events
       />
       {isGameOver && (

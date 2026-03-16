@@ -148,7 +148,9 @@ function App() {
       if (gameState.draggedBlock) {
         e.preventDefault(); // Prevent scroll while dragging
         const touch = e.touches[0];
-        setMousePos({ clientX: touch.clientX, clientY: touch.clientY });
+        // Add vertical offset on mobile so block isn't under finger
+        const offset = 60; 
+        setMousePos({ clientX: touch.clientX, clientY: touch.clientY - offset });
       }
     };
 
@@ -203,7 +205,9 @@ function App() {
     // Use the last known position since touchend has no touches
     const touch = e.changedTouches[0];
     if (touch) {
-      attemptDrop(touch.clientX, touch.clientY);
+      // Use offset-adjusted position for drop check too
+      const offset = 60;
+      attemptDrop(touch.clientX, touch.clientY - offset);
     } else {
       gameState.clearDraggedBlock();
     }
@@ -358,8 +362,10 @@ function App() {
          <div 
            className="dragged-block-container"
            style={{
-             left: mousePos.clientX,
-             top: mousePos.clientY
+             transform: `translate3d(${mousePos.clientX}px, ${mousePos.clientY}px, 0)`,
+             position: 'fixed',
+             left: 0,
+             top: 0
            }}
          >
             {gameState.draggedBlock.block.grid.map((row, rIdx) => (

@@ -11,6 +11,12 @@ import {
 import { getRandomBlocks } from './shapes';
 import type { GameState, BlockShape } from './types';
 
+const vibrate = (pattern: number | number[]) => {
+  if (typeof window !== 'undefined' && window.navigator.vibrate) {
+    window.navigator.vibrate(pattern);
+  }
+};
+
 export const useGameState = (gridSize: number = GRID_SIZE) => {
   const [gameState, setGameState] = useState<GameState>({
     grid: createEmptyGrid(gridSize),
@@ -56,6 +62,7 @@ export const useGameState = (gridSize: number = GRID_SIZE) => {
         ...prev,
         freezeMode: !prev.freezeMode
     }));
+    vibrate(5);
   }, []);
 
   const unfreeze = useCallback(() => {
@@ -107,6 +114,8 @@ export const useGameState = (gridSize: number = GRID_SIZE) => {
         score: prev.score + shapePoints,
         draggedBlock: null
       }));
+      
+      vibrate(10); // Subtle tap on placement
 
       // Phase 2: After a visual delay, evaluate and clear/freeze lines
       if (!gameState.freezeMode) {
@@ -120,6 +129,7 @@ export const useGameState = (gridSize: number = GRID_SIZE) => {
               score: prev.score + points,
             };
           });
+          if (clearing) vibrate([20, 50, 20]); // Burst on clear
           setClearing(false);
         }, 400); // 400ms highlight flash
       } else {
