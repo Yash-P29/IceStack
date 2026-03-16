@@ -199,9 +199,6 @@ function App() {
       const x = clientX - rect.left;
       const y = clientY - rect.top;
 
-      const CELL_SIZE = 40;
-      const GAP = 2;
-
       const blockRows = gameState.draggedBlock.block.grid.length;
       const blockCols = gameState.draggedBlock.block.grid[0].length;
 
