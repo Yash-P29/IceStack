@@ -34,7 +34,7 @@ export const launchConfetti = (durationMs: number = 3000) => {
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     particles.push({
       x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height * -1, // Start above screen
+      y: Math.random() * canvas.height * -1,
       vx: (Math.random() - 0.5) * 6,
       vy: Math.random() * 4 + 2,
       w: Math.random() * 10 + 4,
@@ -64,9 +64,9 @@ export const launchConfetti = (durationMs: number = 3000) => {
     for (const p of particles) {
       p.x += p.vx;
       p.y += p.vy;
-      p.vy += 0.05; // gravity
+      p.vy += 0.05;
       p.rotation += p.rotationSpeed;
-      p.vx *= 0.999; // air resistance
+      p.vx *= 0.999;
 
       ctx.save();
       ctx.globalAlpha = globalAlpha * p.opacity;

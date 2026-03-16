@@ -17,6 +17,7 @@ export const Sidebar: FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
     >
       <div className="sidebar-menu">
         <button 
+          id="nav-play"
           className={`sidebar-item ${currentTab === 'play' ? 'active' : ''}`}
           onClick={() => onSelectTab('play')}
         >
@@ -29,6 +30,7 @@ export const Sidebar: FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
         </button>
 
         <button 
+          id="nav-rules"
           className={`sidebar-item ${currentTab === 'rules' ? 'active' : ''}`}
           onClick={() => onSelectTab('rules')}
         >
@@ -41,6 +43,7 @@ export const Sidebar: FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
         </button>
 
         <button 
+          id="nav-leaderboard"
           className={`sidebar-item ${currentTab === 'leaderboard' ? 'active' : ''}`}
           onClick={() => onSelectTab('leaderboard')}
         >
@@ -58,6 +61,7 @@ export const Sidebar: FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
         </button>
 
         <button 
+          id="nav-themes"
           className={`sidebar-item ${currentTab === 'themes' ? 'active' : ''}`}
           onClick={() => onSelectTab('themes')}
         >
@@ -71,6 +75,21 @@ export const Sidebar: FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
             </svg>
           </div>
           <span className="sidebar-text">Themes</span>
+        </button>
+
+        <button 
+          id="nav-walkthrough"
+          className="sidebar-item"
+          onClick={() => onSelectTab('walkthrough')}
+        >
+          <div className="icon-wrapper">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <span className="sidebar-text">Walkthrough</span>
         </button>
       </div>
     </div>

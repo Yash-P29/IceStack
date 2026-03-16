@@ -14,13 +14,14 @@ export const Controls: FC<ControlsProps> = ({ freezeMode, onToggleFreeze, onUnfr
           <span className="toggle-label">
             ❄️ Freeze Mode
           </span>
-          <div className="switch">
+          <div className="switch" id="freeze-mode-toggle">
             <input type="checkbox" checked={freezeMode} onChange={onToggleFreeze} />
             <span className="slider"></span>
           </div>
         </label>
 
         <button 
+          id="unfreeze-btn"
           className="unfreeze-btn" 
           onClick={onUnfreeze}
           disabled={!freezeMode}

@@ -45,12 +45,12 @@ export const Leaderboard: FC<LeaderboardProps> = ({ entries, playerName, onPlaye
   };
 
   return (
-    <div className="glass-panel" style={{ width: '650px', maxWidth: '100%', padding: '32px' }}>
+    <div className="glass-panel" id="leaderboard-content" style={{ width: '650px', maxWidth: '100%', padding: '32px' }}>
       <h2 style={{ fontSize: '2.5rem', marginBottom: '8px', letterSpacing: '2px' }}>
         🏆 Global Leaderboard
       </h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.95rem' }}>
-        Top 10 IceStack players worldwide {!isLoading && !entries.some(e => e.name !== 'Gaurav Patil' && e.name !== '—') && "(Local Mode)"}
+        Top 10 IceStacck players worldwide {!isLoading && !entries.some(e => e.name !== 'Gaurav Patil' && e.name !== '—') && "(Local Mode)"}
       </p>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', minHeight: '200px' }}>
@@ -123,7 +123,7 @@ export const Leaderboard: FC<LeaderboardProps> = ({ entries, playerName, onPlaye
       </div>
 
       {/* Username Input Section */}
-      <div style={{ 
+      <div id="username-input-section" style={{ 
         marginTop: '32px', 
         padding: '24px', 
         background: 'rgba(255, 255, 255, 0.03)', 

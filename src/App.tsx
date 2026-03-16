@@ -7,6 +7,7 @@ import { Rules } from './components/Rules';
 import { Leaderboard } from './components/Leaderboard';
 import type { LeaderboardEntry } from './components/Leaderboard';
 import { ThemeSelector } from './components/ThemeSelector';
+import { WalkthroughBubble } from './components/WalkthroughBubble';
 import { useGameState } from './game/useGameState';
 import { THEMES } from './game/shapes';
 import type { ThemeName } from './game/shapes';
@@ -14,7 +15,7 @@ import type { BlockShape } from './game/types';
 import { launchConfetti } from './game/confetti';
 import { supabase } from './game/supabaseClient';
 
-export type TabName = 'play' | 'rules' | 'leaderboard' | 'themes';
+export type TabName = 'play' | 'rules' | 'leaderboard' | 'themes' | 'walkthrough';
 
 const LEGACY_RECORD = { name: 'Gaurav Patil', score: 26012006 };
 
@@ -55,7 +56,7 @@ function App() {
     // Load local fallback from localStorage
     let localResults: any[] = [];
     try {
-      const saved = localStorage.getItem('icestack_local_leaderboard');
+      const saved = localStorage.getItem('icestacck_local_leaderboard');
       if (saved) localResults = JSON.parse(saved);
     } catch { /* ignore */ }
 
@@ -223,12 +224,60 @@ function App() {
     setMousePos({ clientX, clientY });
   }, [gameState]);
 
+  // ========== WALKTHROUGH LOGIC ==========
+  const [walkthroughStep, setWalkthroughStep] = useState<number | null>(null);
+
+  useEffect(() => {
+    const seen = localStorage.getItem('icestacck_walkthrough_seen');
+    if (!seen) {
+      setWalkthroughStep(0);
+    }
+  }, []);
+
+  const handleNextStep = () => {
+    if (walkthroughStep !== null) {
+      if (walkthroughStep < 11) {
+        setWalkthroughStep(walkthroughStep + 1);
+      } else {
+        setWalkthroughStep(null);
+        localStorage.setItem('icestacck_walkthrough_seen', 'true');
+      }
+    }
+  };
+
+  const handleSkipWalkthrough = () => {
+    setWalkthroughStep(null);
+    localStorage.setItem('icestacck_walkthrough_seen', 'true');
+  };
+
+  const startWalkthrough = useCallback(() => {
+    setCurrentTab('play');
+    setWalkthroughStep(0);
+  }, []);
+
+  // Effect to switch tabs based on walkthrough step
+  useEffect(() => {
+    if (walkthroughStep === 7) setCurrentTab('rules');
+    if (walkthroughStep === 8 || walkthroughStep === 9) setCurrentTab('leaderboard');
+    if (walkthroughStep === 10) setCurrentTab('themes');
+    if (walkthroughStep === 11) setCurrentTab('play');
+  }, [walkthroughStep]);
+
+  // Tab switching override for the "Walkthrough" tab click
+  const handleTabSelect = (tab: TabName) => {
+    if (tab === 'walkthrough') {
+      startWalkthrough();
+    } else {
+      setCurrentTab(tab);
+    }
+  };
+
   return (
     <>
-      <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
+      <Sidebar currentTab={currentTab} onSelectTab={handleTabSelect} />
       <div className="app-container">
         <div className="title-container">
-        <h1>IceStack</h1>
+        <h1>IceStacck</h1>
         <p>Strategic Block Placement with Freeze Mechanics</p>
       </div>
 
@@ -236,7 +285,7 @@ function App() {
       <div className="game-layout">
         <div className="main-column">
           {/* Grid Size Selector */}
-          <div className="grid-size-selector">
+          <div className="grid-size-selector" id="grid-size-selector">
             <button
               onClick={() => setGridSize(8)}
               className={`grid-size-btn ${gridSize === 8 ? 'active' : ''}`}
@@ -261,15 +310,17 @@ function App() {
             freezeMode={gameState.freezeMode}
             gridSize={gridSize}
           />
-          <BlockTray 
-            availableBlocks={gameState.availableBlocks}
-            onDragStart={handleDragStart}
-            theme={currentTheme}
-          />
+          <div id="block-tray-container">
+            <BlockTray 
+              availableBlocks={gameState.availableBlocks}
+              onDragStart={handleDragStart}
+              theme={currentTheme}
+            />
+          </div>
         </div>
 
         <div className="side-column">
-          <div className="glass-panel score-panel" style={{ padding: '12px 24px' }}>
+          <div className="glass-panel score-panel" id="score-panel" style={{ padding: '12px 24px' }}>
             <span className="score-label">Score</span>
             <span className="score-value">{gameState.score.toLocaleString()}</span>
           </div>
@@ -292,6 +343,15 @@ function App() {
         />
       )}
       {currentTab === 'themes' && <ThemeSelector currentTheme={currentTheme} onSelectTheme={setCurrentTheme} />}
+
+      {walkthroughStep !== null && (
+        <WalkthroughBubble 
+          currentStep={walkthroughStep} 
+          onNext={handleNextStep} 
+          onSkip={handleSkipWalkthrough} 
+          playerName={playerName}
+        />
+      )}
 
       {/* Floating Dragged Block Visualization */}
       {gameState.draggedBlock && mousePos && (

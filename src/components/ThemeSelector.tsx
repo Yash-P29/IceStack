@@ -9,7 +9,7 @@ interface ThemeSelectorProps {
 
 export const ThemeSelector: FC<ThemeSelectorProps> = ({ currentTheme, onSelectTheme }) => {
   const themesList: { id: ThemeName; label: string; desc: string }[] = [
-    { id: 'default', label: 'Neon Default', desc: 'The classic vibrant IceStack experience.' },
+    { id: 'default', label: 'Neon Default', desc: 'The classic vibrant IceStacck experience.' },
     { id: 'green', label: 'Emerald Forest', desc: 'Lush and natural shades of green.' },
     { id: 'monochrome', label: 'Monochrome', desc: 'Sleek, professional grayscale styling.' },
     { id: 'blackholesun', label: 'Black Hole Sun', desc: 'Warm, intense hues of gold and fire.' },
@@ -18,7 +18,7 @@ export const ThemeSelector: FC<ThemeSelectorProps> = ({ currentTheme, onSelectTh
   ];
 
   return (
-    <div className="glass-panel" style={{ width: '600px', maxWidth: '100%', padding: '32px' }}>
+    <div className="glass-panel" id="themes-grid" style={{ width: '600px', maxWidth: '100%', padding: '32px' }}>
       <h2 style={{ fontSize: '2.5rem', marginBottom: '24px', letterSpacing: '1px' }}>Select Theme</h2>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>

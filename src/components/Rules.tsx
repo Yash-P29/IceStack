@@ -2,8 +2,8 @@ import { type FC } from 'react';
 
 export const Rules: FC = () => {
   return (
-    <div className="glass-panel" style={{ width: '800px', maxWidth: '100%', textAlign: 'left', padding: '40px' }}>
-      <h2 style={{ fontSize: '2.5rem', marginBottom: '24px', color: 'var(--accent-cyan)' }}>IceStack Rules</h2>
+    <div className="glass-panel" id="rules-content" style={{ width: '800px', maxWidth: '100%', textAlign: 'left', padding: '40px' }}>
+      <h2 style={{ fontSize: '2.5rem', marginBottom: '24px', color: 'var(--accent-cyan)' }}>IceStacck Rules</h2>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
         <section>
