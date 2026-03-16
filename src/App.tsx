@@ -37,7 +37,7 @@ function App() {
   const fetchLeaderboard = useCallback(async () => {
     setIsLoadingLeaderboard(true);
     let cloudResults: any[] = [];
-    
+
     try {
       if (supabase) {
         const { data, error } = await supabase
@@ -45,7 +45,7 @@ function App() {
           .select('*')
           .order('score', { ascending: false })
           .limit(10);
-        
+
         if (error) throw error;
         cloudResults = data || [];
       }
@@ -64,7 +64,7 @@ function App() {
     // Sort and take top 10
     const merged = [LEGACY_RECORD, ...cloudResults, ...localResults]
       // filter out duplicates by name+score to be safe
-      .filter((entry, index, self) => 
+      .filter((entry, index, self) =>
         index === self.findIndex((t) => t.name === entry.name && t.score === entry.score)
       )
       .sort((a, b) => b.score - a.score)
@@ -88,11 +88,11 @@ function App() {
     if (gameState.isGameOver && gameState.score > prevScoreRef.current) {
       const currentScore = gameState.score;
       const name = playerName.trim() || 'Anonymous';
-      
+
       const submitScore = async () => {
         // Decide if it's a top score
         const isTopScore = leaderboard.length < 10 || currentScore > (leaderboard[leaderboard.length - 1]?.score || 0);
-        
+
         if (isTopScore) {
           launchConfetti(3000);
         }
@@ -117,7 +117,7 @@ function App() {
             .slice(0, 10);
           localStorage.setItem('icestack_local_leaderboard', JSON.stringify(newLocal));
         } catch { /* ignore */ }
-        
+
         // 3. Refresh display
         await fetchLeaderboard();
       };
@@ -136,6 +136,26 @@ function App() {
 
   // ========== UNIFIED POINTER HANDLING (mouse + touch) ==========
 
+  const [cellSize, setCellSize] = useState(40);
+  const [canvasSize, setCanvasSize] = useState(420);
+  const GAP = 2;
+
+  // Dynamic scaling for mobile
+  useEffect(() => {
+    const updateSize = () => {
+      const availableWidth = window.innerWidth - 32; // Horizontal padding
+      const maxPossibleSize = Math.min(availableWidth, 500); // Max size on desktop
+
+      const newCellSize = Math.floor((maxPossibleSize - (gridSize + 1) * GAP) / gridSize);
+      setCellSize(newCellSize);
+      setCanvasSize((newCellSize + GAP) * gridSize + GAP);
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [gridSize]);
+
   // Global Mouse Move for Dragging
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -149,16 +169,16 @@ function App() {
         e.preventDefault(); // Prevent scroll while dragging
         const touch = e.touches[0];
         // Add vertical offset on mobile so block isn't under finger
-        const offset = 60; 
+        const offset = 60;
         setMousePos({ clientX: touch.clientX, clientY: touch.clientY - offset });
       }
     };
 
     if (gameState.draggedBlock) {
-       window.addEventListener('mousemove', handleMouseMove);
-       window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
     } else {
-       setMousePos(null);
+      setMousePos(null);
     }
 
     return () => {
@@ -170,29 +190,30 @@ function App() {
   // Shared drop logic
   const attemptDrop = useCallback((clientX: number, clientY: number) => {
     if (!gameState.draggedBlock) return;
-    
+
     const elementsUnderCursor = document.elementsFromPoint(clientX, clientY);
     const boardContainer = elementsUnderCursor.find(el => el.classList.contains('board-container'));
-    
-    if (boardContainer) {
-       const rect = boardContainer.getBoundingClientRect();
-       const x = clientX - rect.left;
-       const y = clientY - rect.top;
 
-       const CELL_SIZE = 40;
-       const GAP = 2;
-       
-       const blockRows = gameState.draggedBlock.block.grid.length;
-       const blockCols = gameState.draggedBlock.block.grid[0].length;
-       
-       const col = Math.floor((x - ((blockCols * CELL_SIZE)/2)) / (CELL_SIZE + GAP));
-       const row = Math.floor((y - ((blockRows * CELL_SIZE)/2)) / (CELL_SIZE + GAP));
-       
-       gameState.handleDrop(row, col);
+    if (boardContainer) {
+      const rect = boardContainer.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      const CELL_SIZE = 40;
+      const GAP = 2;
+
+      const blockRows = gameState.draggedBlock.block.grid.length;
+      const blockCols = gameState.draggedBlock.block.grid[0].length;
+
+      // Calculate column and row accurately based on dynamic cellSize
+      const col = Math.floor((x - ((blockCols * cellSize) / 2)) / (cellSize + GAP));
+      const row = Math.floor((y - ((blockRows * cellSize) / 2)) / (cellSize + GAP));
+
+      gameState.handleDrop(row, col);
     } else {
-       gameState.clearDraggedBlock();
+      gameState.clearDraggedBlock();
     }
-  }, [gameState]);
+  }, [gameState, cellSize, GAP]);
 
   // Global Mouse Up for Dropping
   const handleGlobalMouseUp = useCallback((e: MouseEvent) => {
@@ -281,109 +302,113 @@ function App() {
       <Sidebar currentTab={currentTab} onSelectTab={handleTabSelect} />
       <div className="app-container">
         <div className="title-container">
-        <h1>IceStacck</h1>
-        <p>Strategic Block Placement with Freeze Mechanics</p>
-      </div>
+          <h1>IceStacck</h1>
+          <p>Strategic Block Placement with Freeze Mechanics</p>
+        </div>
 
-      {currentTab === 'play' && (
-      <div className="game-layout">
-        <div className="main-column">
-          {/* Grid Size Selector */}
-          <div className="grid-size-selector" id="grid-size-selector">
-            <button
-              onClick={() => setGridSize(8)}
-              className={`grid-size-btn ${gridSize === 8 ? 'active' : ''}`}
-            >
-              8×8
-            </button>
-            <button
-              onClick={() => setGridSize(10)}
-              className={`grid-size-btn ${gridSize === 10 ? 'active' : ''}`}
-            >
-              10×10
-            </button>
+        {currentTab === 'play' && (
+          <div className="game-layout">
+            <div className="main-column">
+              {/* Grid Size Selector */}
+              <div className="grid-size-selector" id="grid-size-selector">
+                <button
+                  onClick={() => setGridSize(8)}
+                  className={`grid-size-btn ${gridSize === 8 ? 'active' : ''}`}
+                >
+                  8×8
+                </button>
+                <button
+                  onClick={() => setGridSize(10)}
+                  className={`grid-size-btn ${gridSize === 10 ? 'active' : ''}`}
+                >
+                  10×10
+                </button>
+              </div>
+
+              <GameBoard
+                grid={gameState.grid}
+                draggedBlock={gameState.draggedBlock}
+                isGameOver={gameState.isGameOver}
+                onRestart={gameState.resetGame}
+                mousePos={mousePos}
+                theme={currentTheme}
+                freezeMode={gameState.freezeMode}
+                gridSize={gridSize}
+                cellSize={cellSize}
+                canvasSize={canvasSize}
+              />
+              <div id="block-tray-container">
+                <BlockTray
+                  availableBlocks={gameState.availableBlocks}
+                  onDragStart={handleDragStart}
+                  theme={currentTheme}
+                />
+              </div>
+            </div>
+
+            <div className="side-column">
+              <div className="glass-panel score-panel" id="score-panel" style={{ padding: '12px 24px' }}>
+                <span className="score-label">Score</span>
+                <span className="score-value">{gameState.score.toLocaleString()}</span>
+              </div>
+              <Controls
+                freezeMode={gameState.freezeMode}
+                onToggleFreeze={gameState.toggleFreezeMode}
+                onUnfreeze={gameState.unfreeze}
+              />
+            </div>
           </div>
+        )}
 
-          <GameBoard  
-            grid={gameState.grid}
-            draggedBlock={gameState.draggedBlock}
-            isGameOver={gameState.isGameOver}
-            onRestart={gameState.resetGame}
-            mousePos={mousePos}
-            theme={currentTheme}
-            freezeMode={gameState.freezeMode}
-            gridSize={gridSize}
+        {currentTab === 'rules' && <Rules />}
+        {currentTab === 'leaderboard' && (
+          <Leaderboard
+            entries={leaderboard}
+            playerName={playerName}
+            onPlayerNameChange={setPlayerName}
+            isLoading={isLoadingLeaderboard}
           />
-          <div id="block-tray-container">
-            <BlockTray 
-              availableBlocks={gameState.availableBlocks}
-              onDragStart={handleDragStart}
-              theme={currentTheme}
-            />
-          </div>
-        </div>
+        )}
+        {currentTab === 'themes' && <ThemeSelector currentTheme={currentTheme} onSelectTheme={setCurrentTheme} />}
 
-        <div className="side-column">
-          <div className="glass-panel score-panel" id="score-panel" style={{ padding: '12px 24px' }}>
-            <span className="score-label">Score</span>
-            <span className="score-value">{gameState.score.toLocaleString()}</span>
-          </div>
-           <Controls 
-             freezeMode={gameState.freezeMode}
-             onToggleFreeze={gameState.toggleFreezeMode}
-             onUnfreeze={gameState.unfreeze}
-           />
-        </div>
-      </div>
-      )}
+        {walkthroughStep !== null && (
+          <WalkthroughBubble
+            currentStep={walkthroughStep}
+            onNext={handleNextStep}
+            onSkip={handleSkipWalkthrough}
+            playerName={playerName}
+          />
+        )}
 
-      {currentTab === 'rules' && <Rules />}
-      {currentTab === 'leaderboard' && (
-        <Leaderboard 
-          entries={leaderboard} 
-          playerName={playerName} 
-          onPlayerNameChange={setPlayerName} 
-          isLoading={isLoadingLeaderboard}
-        />
-      )}
-      {currentTab === 'themes' && <ThemeSelector currentTheme={currentTheme} onSelectTheme={setCurrentTheme} />}
-
-      {walkthroughStep !== null && (
-        <WalkthroughBubble 
-          currentStep={walkthroughStep} 
-          onNext={handleNextStep} 
-          onSkip={handleSkipWalkthrough} 
-          playerName={playerName}
-        />
-      )}
-
-      {/* Floating Dragged Block Visualization */}
-      {gameState.draggedBlock && mousePos && (
-         <div 
-           className="dragged-block-container"
-           style={{
-             transform: `translate3d(${mousePos.clientX}px, ${mousePos.clientY}px, 0)`,
-             position: 'fixed',
-             left: 0,
-             top: 0
-           }}
-         >
+        {/* Floating Dragged Block Visualization */}
+        {gameState.draggedBlock && mousePos && (
+          <div
+            className="dragged-block-container"
+            style={{
+              transform: `translate3d(${mousePos.clientX}px, ${mousePos.clientY}px, 0) translate(-50%, -50%)`,
+              position: 'fixed',
+              left: 0,
+              top: 0
+            }}
+          >
             {gameState.draggedBlock.block.grid.map((row, rIdx) => (
               <div key={rIdx} className="shape-row">
                 {row.map((cell, cIdx) => (
-                  <div 
+                  <div
                     key={`${rIdx}-${cIdx}`}
                     className={`shape-cell ${!cell ? 'empty' : ''}`}
-                    style={{
-                       backgroundColor: cell ? THEMES[currentTheme][gameState.draggedBlock!.block.colorIndex] : 'transparent',
-                    }}
+                      style={{
+                        width: `${cellSize}px`,
+                        height: `${cellSize}px`,
+                        backgroundColor: cell ? THEMES[currentTheme][gameState.draggedBlock!.block.colorIndex] : 'transparent',
+                      }}
                   />
                 ))}
               </div>
             ))}
-         </div>
-      )}
-    </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }

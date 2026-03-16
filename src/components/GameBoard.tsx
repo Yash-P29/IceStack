@@ -13,52 +13,22 @@ interface GameBoardProps {
   theme: ThemeName;
   freezeMode: boolean;
   gridSize: number;
+  cellSize: number;
+  canvasSize: number;
 }
 
-export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, onRestart, mousePos, theme, freezeMode, gridSize }) => {
+export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, onRestart, mousePos, theme, freezeMode, gridSize, cellSize, canvasSize }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [hoverRow, setHoverRow] = useState<number | null>(null);
   const [hoverCol, setHoverCol] = useState<number | null>(null);
-
-  const [cellSize, setCellSize] = useState(40);
-  const GAP = 2; // Inner gap between cells rendering
-  const [canvasSize, setCanvasSize] = useState((40 + GAP) * gridSize + GAP);
-
-  // Dynamic scaling for mobile
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const updateSize = () => {
-      const container = containerRef.current;
-      if (!container) return;
-      
-      const availableWidth = window.innerWidth - 32; // Horizontal padding
-      const maxPossibleSize = Math.min(availableWidth, 500); // Max size on desktop
-      
-      const newCellSize = Math.floor((maxPossibleSize - (gridSize + 1) * GAP) / gridSize);
-      setCellSize(newCellSize);
-      setCanvasSize((newCellSize + GAP) * gridSize + GAP);
-    };
-
-    const observer = new ResizeObserver(updateSize);
-    observer.observe(document.body);
-    updateSize();
-
-    return () => observer.disconnect();
-  }, [gridSize]);
+  const GAP = 2;
 
   const calculateGridPosition = useCallback((clientX: number, clientY: number) => {
     if (!containerRef.current || !draggedBlock) return null;
 
     const rect = containerRef.current.getBoundingClientRect();
-
-    // Check if mouse is within canvas bounds
-    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
-      return null;
-    }
-
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     const blockRows = draggedBlock.block.grid.length;
@@ -68,7 +38,6 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
 
     return { row, col };
   }, [draggedBlock, cellSize, GAP]);
-
 
   // Update hover state when dragging
   useEffect(() => {
@@ -92,7 +61,7 @@ export const GameBoard: FC<GameBoardProps> = ({ grid, draggedBlock, isGameOver, 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     // Clear board
