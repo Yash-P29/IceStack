@@ -48,12 +48,16 @@ export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onN
 
     const updatePosition = () => {
       const el = document.querySelector(step.selector!);
+      const isMobile = window.innerWidth <= 768;
+      const bubbleWidth = Math.min(window.innerWidth - 40, 300);
+
       if (!el) {
         setBubbleStyle({
           position: 'fixed',
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
+          width: `${bubbleWidth}px`,
           zIndex: 10001,
         });
         return;
@@ -76,62 +80,68 @@ export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onN
       });
 
       let top = rect.top;
-      let left = rect.left;
+      let left = rect.left + rect.width / 2;
+      let transform = 'translate(-50%, 0)';
 
-      switch (step.position) {
+      // Auto-adjust position if too close to edges on mobile
+      let effectivePosition = step.position;
+      if (isMobile) {
+        if (rect.top < 150) effectivePosition = 'bottom';
+        else if (rect.bottom > window.innerHeight - 150) effectivePosition = 'top';
+      }
+
+      switch (effectivePosition) {
         case 'top':
           top = rect.top - 20;
-          left = rect.left + rect.width / 2;
-          setBubbleStyle({
-            position: 'fixed',
-            top,
-            left,
-            transform: 'translate(-50%, -100%)',
-            zIndex: 10001,
-          });
+          transform = 'translate(-50%, -100%)';
           break;
         case 'bottom':
           top = rect.bottom + 20;
-          left = rect.left + rect.width / 2;
-          setBubbleStyle({
-            position: 'fixed',
-            top,
-            left,
-            transform: 'translate(-50%, 0)',
-            zIndex: 10001,
-          });
+          transform = 'translate(-50%, 0)';
           break;
         case 'left':
-          top = rect.top + rect.height / 2;
-          left = rect.left - 20;
-          setBubbleStyle({
-            position: 'fixed',
-            top,
-            left,
-            transform: 'translate(-100%, -50%)',
-            zIndex: 10001,
-          });
+          if (isMobile) {
+             top = rect.top - 20;
+             transform = 'translate(-50%, -100%)';
+          } else {
+             top = rect.top + rect.height / 2;
+             left = rect.left - 20;
+             transform = 'translate(-100%, -50%)';
+          }
           break;
         case 'right':
-          top = rect.top + rect.height / 2;
-          left = rect.right + 20;
-          setBubbleStyle({
-            position: 'fixed',
-            top,
-            left,
-            transform: 'translate(0, -50%)',
-            zIndex: 10001,
-          });
+          if (isMobile) {
+             top = rect.bottom + 20;
+             transform = 'translate(-50%, 0)';
+          } else {
+             top = rect.top + rect.height / 2;
+             left = rect.right + 20;
+             transform = 'translate(0, -50%)';
+          }
           break;
         default:
-          setBubbleStyle({
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10001,
-          });
+          top = window.innerHeight / 2;
+          left = window.innerWidth / 2;
+          transform = 'translate(-50%, -50%)';
       }
+
+      // Clamp left/right to screen
+      const halfWidth = bubbleWidth / 2;
+      if (left - halfWidth < 10) left = halfWidth + 10;
+      if (left + halfWidth > window.innerWidth - 10) left = window.innerWidth - halfWidth - 10;
+
+      // Clamp top/bottom
+      if (top < 10) top = 10;
+      if (top > window.innerHeight - 100) top = window.innerHeight - 200; // Leave room for buttons
+
+      setBubbleStyle({
+        position: 'fixed',
+        top,
+        left,
+        width: `${bubbleWidth}px`,
+        transform,
+        zIndex: 10001,
+      });
     };
 
     // Initial update with a small delay to allow tab transitions to complete
@@ -162,11 +172,11 @@ export const WalkthroughBubble: React.FC<WalkthroughProps> = ({ currentStep, onN
       )}
       <div className="glass-panel" style={{
         ...bubbleStyle,
-        width: '300px',
-        padding: '24px',
+        padding: '20px',
         textAlign: 'center',
         border: '2px solid var(--accent-cyan)',
         animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        boxShadow: '0 8px 32px rgba(0, 229, 255, 0.2)',
       }}>
         <p style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '20px', color: '#fff' }}>
           {step.message}
